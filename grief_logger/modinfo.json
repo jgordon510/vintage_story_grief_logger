@@ -1,0 +1,14 @@
+{
+  "type": "code",
+  "modid": "grief_logger",
+  "name": "grief_logger",
+  "authors": [
+    "codeAtorium"
+  ],
+  "description": "A mod to log griefing of player built structures on servers.",
+  "version": "0.0.19",
+  "dependencies": {
+    "game": "1.19.5"
+  },
+  "RequiredOnClient": false
+}
