@@ -19,6 +19,7 @@ using System.Linq.Expressions;
 using System.Xml.Linq;
 using ProperVersion;
 using System.Reflection.PortableExecutable;
+using System.Text;
 
 namespace grieflogger
 {
@@ -56,14 +57,16 @@ namespace grieflogger
             this.sapi = api;
             //load or make config settings
             config = sapi.LoadModConfig<ConfigSettings>("grief_log.json");
+            
             if (config == null)
             {
-                sapi.StoreModConfig(new ConfigSettings(), "grief_log.json");
                 config = new ConfigSettings();
+                sapi.StoreModConfig(config, "grief_log.json");
             }
             string filePath = Environment.SpecialFolder.ApplicationData.ToString();
             docPath = Path.GetDirectoryName(filePath);
-            outputFile = new StreamWriter(Path.Combine(docPath, "grief-log.csv"), true);
+            //outputFile = new StreamWriter(Path.Combine(docPath, "grief-log.csv"), true);
+            
             SetChatGroup();
             //these methods deal with griefing
             sapi.Event.BreakBlock += Event_BreakBlock; 
@@ -165,10 +168,20 @@ namespace grieflogger
          */
         private void AddLogLine(string line)
         {
-            using(outputFile)
+            if (sapi?.Side == null) return;
+            if (sapi.Side.IsClient()) return;
+            try
             {
-                outputFile.WriteLine(line);
+                using (outputFile = new StreamWriter(Path.Combine(docPath, "grief-log.csv"), true))
+                {
+                    outputFile.WriteLine(line);
+                }
             }
+            catch (Exception e)
+            {
+                sapi.Logger.Debug("Couldn't write to file...");
+            }
+            return;
         }
         private void OutputLog(List<string> dataStore, string fn)
         {
@@ -199,7 +212,8 @@ namespace grieflogger
                 var p = plr as IServerPlayer;
                 if (p.Entity != null && p.ConnectionState == EnumClientState.Playing)
                 {
-                    if (config.CHAT_ROLES.Contains(plr.Role.Code))
+                    sapi.Logger.Debug(plr.Role.Code.ToString());
+                    if (config.CHAT_ROLES.Contains(plr.Role.Code.ToString()))
                     {
                         p.SendMessage(chatGroup, announcement, EnumChatType.Notification);
                     }
@@ -465,6 +479,7 @@ namespace grieflogger
             } catch(Exception e)
             {
                 sapi.Logger.Debug("GRIEFLOGGER EXCEPTION: {0}", e.Message);
+                return;
             }
             
             if (!entity.IsCreature) return;
@@ -488,8 +503,9 @@ namespace grieflogger
             string claimOwner = null;
             if (lc != null && lc.Length > 0)
             {
-                claimOwner = lc[0].LastKnownOwnerName; 
+                claimOwner = lc[0].LastKnownOwnerName;
             }
+            else return;
             int generation = entity.WatchedAttributes.GetInt("generation");
             if( generation == 0) return;
             if (!(claimOwner.Contains(killedByName)) || DEBUG)
